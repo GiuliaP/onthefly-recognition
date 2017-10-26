@@ -1,6 +1,6 @@
 
-dofile(rf:findFile("onTheFlyRec_interact_fsm.lua"))
-dofile(rf:findFile("onTheFlyRec_funcs.lua"))
+dofile(rf:findFile("onTheFlyRec_interact_fsm_mobile.lua"))
+dofile(rf:findFile("onTheFlyRec_funcs_mobile.lua"))
 
 return rfsm.state {
     ----------------------------------
@@ -11,7 +11,6 @@ return rfsm.state {
             ret = ispeak_port:open("/onTheFlyRec/speak")
             ret = ret and speechRecog_port:open("/onTheFlyRec/speechRecog")
             ret = ret and onTheFlyRec_port:open("/onTheFlyRec/manager")
-            ret = ret and onTheFlyRec_track:open("/onTheFlyRec/track")
 
             if ret == false then
                 rfsm.send_events(fsm, 'e_error')
@@ -26,16 +25,22 @@ return rfsm.state {
     ----------------------------------
     ST_CONNECTPORTS = rfsm.state{
         entry=function()
-                    ret = yarp.NetworkBase_connect(ispeak_port:getName(), "/iSpeak")
-                    ret = yarp.NetworkBase_connect("/onTheFlyRecognition/speech:o", "/iSpeak")
-                    ret = yarp.NetworkBase_connect(speechRecog_port:getName(), "/speechRecognizer/rpc")
-                    ret = yarp.NetworkBase_connect(onTheFlyRec_port:getName(), "/onTheFlyRecognition/human:io")
-                    ret = yarp.NetworkBase_connect(onTheFlyRec_track:getName(), "/onTheFlyRec/gaze")
-
-                    if ret == false then
-                        print("\n\n ERROR WITH CONNECTIONS, PLEASE CHECK \n\n")
-                        rfsm.send_events(fsm, 'e_error')
-                    end
+                ret = yarp.NetworkBase_connect(ispeak_port:getName(), "/iSpeak")
+                ret =  ret and yarp.NetworkBase_connect("/interpretSTART/start:o" , "/onTheFlyRec/speechRecog") 
+                ret = ret and yarp.NetworkBase_connect("/onTheFlyRec/manager" , "/onTheFlyRecognition/laptop:io")
+                --[[ret = false
+                while ret==false
+                do
+                print("WAITING FOR CONNECTION ON PORTS\n")
+                ret =  ispeak_port:getOutputCount() >0
+                ret =  ret and speechRecog_port:getOutputCount() >0
+                ret =  ret and onTheFlyRec_port:getOutputCount() >0
+                yarp.Time_delay(1.0)
+                end--]]
+                if ret == false then
+                    print("\n\nERROR WITH CONNECTIONS, PLEASE CHECK\n\n")
+                    rfsm.send_events(fsm, 'e_error')
+                end
         end
     },
 
@@ -68,8 +73,8 @@ return rfsm.state {
         entry=function()
             print("everything is fine, going home!")
             speak(ispeak_port, "Ready")
-            --print("starting with USER = ROBOT!")
-            --onTheFlyRec_mode(onTheFlyRec_port, "robot")
+            print("starting with USER = ROBOT!")
+            onTheFlyRec_mode(onTheFlyRec_port, "robot")
         end
     },
 
@@ -93,11 +98,9 @@ return rfsm.state {
             yarp.NetworkBase_disconnect(ispeak_port:getName(), "/iSpeak")
             yarp.NetworkBase_disconnect(speechRecog_port:getName(), "/speechRecognizer/rpc")
             yarp.NetworkBase_disconnect(onTheFlyRec_port:getName(), "/onTheFlyRecognition/human:io")
-            yarp.NetworkBase_disconnect(onTheFlyRec_track:getName(), "/onTheFlyRec/gaze")
             ispeak_port:close()
             speechRecog_port:close()
             onTheFlyRec_port:close()
-            onTheFlyRec_track:close()
             shouldExit = true;
         end
     },
@@ -118,7 +121,8 @@ return rfsm.state {
     rfsm.transition { src='ST_INITPORTS', tgt='ST_FATAL', events={ 'e_error' } },
 
     rfsm.transition { src='ST_CONNECTPORTS', tgt='ST_FINI', events={ 'e_error' } },
-    rfsm.transition { src='ST_CONNECTPORTS', tgt='ST_INITVOCABS', events={ 'e_done' } },
+    rfsm.transition { src='ST_CONNECTPORTS', tgt='ST_HOME', events={ 'e_done' } },
+    --rfsm.transition { src='ST_CONNECTPORTS', tgt='ST_INITVOCABS', events={ 'e_done' } },
 
     rfsm.transition { src='ST_INITVOCABS', tgt='ST_FINI', events={ 'e_error' } },
     rfsm.transition { src='ST_INITVOCABS', tgt='ST_HOME', events={ 'e_done' } },

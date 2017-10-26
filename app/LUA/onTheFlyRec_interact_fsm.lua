@@ -1,11 +1,11 @@
 
 event_table = {
     See         = "e_exit",
-    Train       = "e_train",
-    Let         = "e_let",
+    This        = "e_train",
+    What        = "e_recog",
     Forget      = "e_forget",
-    Mode        = "e_mode",
-    I           = "e_i_will",
+    Let         = "e_introduce",
+    Who         = "e_who",
 }
 
 interact_fsm = rfsm.state{
@@ -43,41 +43,74 @@ interact_fsm = rfsm.state{
 
     SUB_TRAIN = rfsm.state{
         entry=function()
-            local obj = result:get(3):asString()
-            local b = onTheFlyRec_train(onTheFlyRec_port, obj)
+            local is_face = false
+            local obj = result:get(7):asString()
+            print ("object is ", obj)
+            print ("bool is ", is_face)
+            local b = onTheFlyRec_train(onTheFlyRec_port, obj, is_face)
         end
     },
 
-    SUB_MODE = rfsm.state{
+    SUB_RECOG = rfsm.state{
         entry=function()
-            local user = result:get(3):asString()
-            local b = onTheFlyRec_mode(onTheFlyRec_port, user)
+            print ("in recognition mode ")
+            local is_face = false
+            print ("bool is ", is_face)
+            local b = onTheFlyRec_recognize(onTheFlyRec_port, is_face)
         end
     },
 
     SUB_LET = rfsm.state{
         entry=function()
-            local b = onTheFlyRec_recognize(onTheFlyRec_port)
+            onTheFlyRec_gazeLook(onTheFlyRec_track)
+            yarp.Time_delay(1)
+            onTheFlyRec_gazeTrackFace(onTheFlyRec_track)
+            local obj = result:get(11):asString()
+            print ("in introduction mode ")
+            yarp.Time_delay(2)
+            print ("person is ", obj)
+            local  is_face = true
+            print ("bool is ", is_face)
+            local b = onTheFlyRec_train(onTheFlyRec_port, obj, is_face)
+            print ("done onTheFlyRec_train ",  b)
+            print ("delaying to continue tracking faces.... ")
+            yarp.Time_delay(15)
+            print ("returning to blob tracking.... ")
+            onTheFlyRec_gazeTrackBlob(onTheFlyRec_track)
+        end
+    },
+    
+    SUB_WHO = rfsm.state{
+        entry=function()
+            onTheFlyRec_gazeLook(onTheFlyRec_track)
+            yarp.Time_delay(1)
+            onTheFlyRec_gazeTrackFace(onTheFlyRec_track)
+            print ("in person request mode ")
+            yarp.Time_delay(2)
+            local  is_face = true
+            print ("bool is ", is_face)
+            local b = onTheFlyRec_recognize(onTheFlyRec_port, is_face)
+            print ("done onTheFlyRec_recognize ",  b)
+            print ("delaying to continue tracking faces.... ")
+            yarp.Time_delay(4)
+            print ("returning to blob tracking.... ")
+            onTheFlyRec_gazeTrackBlob(onTheFlyRec_track)
         end
     },
 
     SUB_FORGET = rfsm.state{
         entry=function()
-            --local obj = result:get(3):asString()
-            --local b = onTheFlyRec_forget(onTheFlyRec_port, obj)
-            --not sure how onTheFlyRec deals with individual objects. All will get deleted
-            local b = onTheFlyRec_forget(onTheFlyRec_port)
+            local obj = result:get(5):asString()
+            if  obj == "objects" then
+                print ("forgetting all objects")
+                obj="all"
+            else
+                print ("forgetting single object", obj)
+            end
+            local b = onTheFlyRec_forget(onTheFlyRec_port, obj)
+            
         end
     },
-
-    SUB_TEACH_OBJ = rfsm.state{
-        entry=function()
-            print("in SUB_TEACH_OBJ")
-            local str = SM_RGM_Expand_Auto(speechRecog_port, "#Object")
-            print("done with name ", str)
-            local b = onTheFlyRec_train(onTheFlyRec_port, str)
-       end
-   },
 
     ----------------------------------
     -- state transitions            --
@@ -89,16 +122,15 @@ interact_fsm = rfsm.state{
     rfsm.transition { src='SUB_MENU', tgt='SUB_TRAIN', events={ 'e_train' } },
     rfsm.transition { src='SUB_TRAIN', tgt='SUB_MENU', events={ 'e_done' } },
 
-    rfsm.transition { src='SUB_MENU', tgt='SUB_LET', events={ 'e_let' } },
-    rfsm.transition { src='SUB_LET', tgt='SUB_MENU', events={ 'e_done' } },
-
-    rfsm.transition { src='SUB_MENU', tgt='SUB_MODE', events={ 'e_mode' } },
-    rfsm.transition { src='SUB_MODE', tgt='SUB_MENU', events={ 'e_done' } },
+    rfsm.transition { src='SUB_MENU', tgt='SUB_RECOG', events={ 'e_recog' } },
+    rfsm.transition { src='SUB_RECOG', tgt='SUB_MENU', events={ 'e_done' } },
 
     rfsm.transition { src='SUB_MENU', tgt='SUB_FORGET', events={ 'e_forget' } },
     rfsm.transition { src='SUB_FORGET', tgt='SUB_MENU', events={ 'e_done' } },
 
-    rfsm.transition { src='SUB_MENU', tgt='SUB_TEACH_OBJ', events={ 'e_i_will' } },
-    rfsm.transition { src='SUB_TEACH_OBJ', tgt='SUB_MENU', events={ 'e_done' } },
+    rfsm.transition { src='SUB_MENU', tgt='SUB_LET', events={ 'e_introduce' } },
+    rfsm.transition { src='SUB_LET', tgt='SUB_MENU', events={ 'e_done' } },
 
+    rfsm.transition { src='SUB_MENU', tgt='SUB_WHO', events={ 'e_who' } },
+    rfsm.transition { src='SUB_WHO', tgt='SUB_MENU', events={ 'e_done' } },
 }

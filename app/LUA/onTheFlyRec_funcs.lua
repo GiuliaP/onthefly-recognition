@@ -10,31 +10,60 @@ end
 ----------------------------------
 -- functions - onTheFlyRec      --
 ----------------------------------
+function onTheFlyRec_gazeLook(port)
+    local wb = yarp.Bottle()
+    wb:clear()
+    wb:addString("look")
+    wb:addString("0.0")
+    wb:addString("10.0")
+    port:write(wb)
+end
 
-function onTheFlyRec_train(port, objName)
+function onTheFlyRec_gazeTrackBlob(port)
+	local wb = yarp.Bottle()
+	wb:clear()
+    wb:addString("track-blob")
+    port:write(wb)
+end
+
+function onTheFlyRec_gazeTrackFace(port)
+    local wb = yarp.Bottle()
+    wb:clear()
+    wb:addString("track-face")
+    port:write(wb)
+end
+
+function onTheFlyRec_train(port, objName, is_face)
 	local wb = yarp.Bottle()
 	local reply = yarp.Bottle()
+
+    print ("bool is ", is_face)
+
 	wb:clear()
     wb:addString("train")
 	wb:addString(objName)
+
+    if is_face==true then
+        wb:addInt(1)
+    else
+        wb:addInt(0)
+    end
+
     port:write(wb,reply)
 	return reply:get(0):asString()
 end
 
-function onTheFlyRec_recognize(port)
+function onTheFlyRec_recognize(port, is_face)
 	local wb = yarp.Bottle()
 	local reply = yarp.Bottle()
 	wb:clear()
-    wb:addString("classify")
-    port:write(wb,reply)
-	return reply:get(0):asString()
-end
+    wb:addString("what")
 
-function onTheFlyRec_mode(port, userName)
-	local wb = yarp.Bottle()
-	local reply = yarp.Bottle()
-	wb:clear()
-	wb:addString(userName)
+    if is_face==true then
+        wb:addInt(1)
+    else
+        wb:addInt(0)
+    end
     port:write(wb,reply)
 	return reply:get(0):asString()
 end
@@ -44,7 +73,7 @@ function onTheFlyRec_forget(port, objName)
 	local reply = yarp.Bottle()
 	wb:clear()
     wb:addString("forget")
-	--wb:addString(objName)
+	wb:addString(objName)
     port:write(wb,reply)
 	return reply:get(0):asString()
 end
